@@ -2,55 +2,53 @@ from typing import Dict, List, Tuple
 from feature_engineering import PatientData
 
 URGENCY_CLASSES = {
-    0: "Non-Urgent",
-    1: "Urgent",
-    2: "Emergency"
+    0: "Non-critical",
+    1: "Critical"
 }
 
 def apply_clinical_rules(patient: PatientData, ml_prediction: int, ml_confidence: float) -> Tuple[int, List[str]]:
     """
     Applies strict clinical thresholds to override or validate the ML model's prediction.
-    Ensures safe intelligence by escalating if critical limits are breached,
-    or flagging high uncertainty.
+    Ensures safe intelligence by escalating if critical limits are breached.
     
     Returns:
-        Tuple of (Final Urgency Class Integer, List of Alert Strings)
+        Tuple of (Final Class Integer, List of Alert Strings)
     """
     alerts = []
     final_class = ml_prediction
     
-    # 1. Extreme Critical Thresholds (Always Emergency)
-    if patient.spo2 < 92:
-        alerts.append("CRITICAL: Severe hypoxemia (SpO2 < 92%). Escalated to Emergency.")
-        final_class = 2
+    # 1. CRITICAL OVERRIDES (Hard Rules)
+    # These vitals are universally concerning regardless of ML prediction.
+    if patient.hr > 140:
+        alerts.append("CRITICAL 🚨: Severe Tachycardia (HR > 140). Rule Override.")
+        final_class = 1
     
-    if patient.sbp < 90:
-        alerts.append("CRITICAL: Hypotension (SBP < 90). Risk of Shock. Escalated to Emergency.")
-        final_class = 2
+    if patient.sbp < 80:
+        alerts.append("CRITICAL 🚨: Severe Hypotension (SBP < 80). Rule Override.")
+        final_class = 1
         
-    if patient.hr > 130:
-        alerts.append("CRITICAL: Severe Tachycardia (HR > 130). Escalated to Emergency.")
-        final_class = 2
+    if patient.spo2 is not None and patient.spo2 < 90:
+        alerts.append("CRITICAL 🚨: Life-threatening Hypoxemia (SpO2 < 90%). Rule Override.")
+        final_class = 1
         
+    # 2. ADDITIONAL SAFETY CHECKS (Warning Zones)
     if patient.rr > 28:
-        alerts.append("CRITICAL: Severe Tachypnea (RR > 28). Respiratory distress risk. Escalated to Emergency.")
-        final_class = 2
-        
-    if patient.mental_state and patient.mental_state != 1:
-        alerts.append(f"WARNING: Altered mental state recognized (Code {patient.mental_state}). Check airway.")
-        if final_class < 1:
-             final_class = 1 # At least Urgent
-    
-    # 2. Confidence Checks
+        alerts.append("WARNING: Severe Tachypnea (RR > 28). Possible respiratory distress.")
+        if final_class == 0:
+            alerts.append("SAFETY ESCALATION: Vital signs suggest instability. Upgraded to Critical.")
+            final_class = 1
+            
+    if patient.mental_state and patient.mental_state > 1:
+        alerts.append(f"WARNING: Altered mental state (Code {patient.mental_state}).")
+        if final_class == 0:
+            final_class = 1 # Better safe than sorry for non-alert patients
+            
+    # 3. CONFIDENCE CHECK
     if ml_confidence < 0.60:
-        alerts.append("WARNING: AI model confidence is low. Manual clinical review strongly advised.")
-        # If low confidence and model said non-urgent, bump to urgent for safety if any borderline vitals
-        if final_class == 0 and (patient.spo2 < 95 or patient.hr > 100):
-             alerts.append("SAFETY OVERRIDE: Low confidence + borderline vitals. Escalated to Urgent.")
-             final_class = 1
+        alerts.append("⚠️ LOW AI CONFIDENCE: Manual assessment strongly advised.")
+        # Borderline escalation logic
+        if final_class == 0 and (patient.spo2 is not None and patient.spo2 < 94):
+            alerts.append("SAFETY OVERRIDE: Low confidence + borderline SpO2. Escalated.")
+            final_class = 1
 
-    # 3. Prevent ML Model from downgrading a rule-based Emergency
-    if ml_prediction == 0 and final_class == 2:
-        alerts.append("MISCLASSIFICATION ALERT: Model suggested Non-Urgent, but patient meets critical emergency criteria.")
-        
     return final_class, alerts

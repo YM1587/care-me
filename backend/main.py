@@ -5,69 +5,92 @@ import pandas as pd
 import os
 import numpy as np
 
-# Use absolute imports or local module imports based on how it runs
+# Use local module imports
 from feature_engineering import PatientData, engineer_features
 from decision_support import apply_clinical_rules, URGENCY_CLASSES
 
-app = FastAPI(title="AI-Powered Patient Triage Support API")
+app = FastAPI(title="CareMe AI-Powered Triage API")
 
 # Setup CORS for the React Frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Since it's a local test build
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "triage_model_pipeline.joblib")
+# Paths for the new independent models
+URGENCY_MODEL_PATH = os.path.join(os.path.dirname(__file__), "urgency_model.pkl")
+RISK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "risk_model.pkl")
 
-# Load ML Model
-rf_model = None
-if os.path.exists(MODEL_PATH):
-    rf_model = joblib.load(MODEL_PATH)
-    print("Pre-trained Random Forest Pipeline loaded successfully.")
+# Load ML Models
+urgency_model = None
+risk_model = None
+
+if os.path.exists(URGENCY_MODEL_PATH):
+    urgency_model = joblib.load(URGENCY_MODEL_PATH)
+    print("Urgency model loaded successfully.")
 else:
-    print(f"Warning: Model not found at {MODEL_PATH}.")
+    print(f"Warning: Urgency model not found at {URGENCY_MODEL_PATH}.")
+
+if os.path.exists(RISK_MODEL_PATH):
+    risk_model = joblib.load(RISK_MODEL_PATH)
+    print("Risk (Mistriage) model loaded successfully.")
+else:
+    print(f"Warning: Risk model not found at {RISK_MODEL_PATH}.")
 
 @app.post("/api/predict")
 async def predict_triage(patient: PatientData):
-    if rf_model is None:
-        raise HTTPException(status_code=500, detail="Model is currently unavailable. Please train it first.")
+    if urgency_model is None:
+        raise HTTPException(status_code=500, detail="Urgency model is unavailable.")
     
-    # Feature Engineering
+    # 1. Feature Engineering
     features = engineer_features(patient)
     df = pd.DataFrame([features])
     
-    # Predict using the random forest model
-    predicted_class_int = int(rf_model.predict(df)[0])
-    probabilities = rf_model.predict_proba(df)[0]
+    # 2. Urgency Prediction
+    try:
+        predicted_class_int = int(urgency_model.predict(df)[0])
+        probabilities = urgency_model.predict_proba(df)[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error (Urgency): {str(e)}")
     
-    # AI Output
     ml_confidence = float(np.max(probabilities))
-    ml_prediction_class = URGENCY_CLASSES[predicted_class_int]
+    ml_prediction_class = URGENCY_CLASSES.get(predicted_class_int, "Unknown")
     
-    # Decision Support Logic
+    # 3. Risk (Mistriage) Prediction
+    risk_prob = 0.0
+    if risk_model is not None:
+        try:
+            # Assuming risk model predicts 1 for High Risk of Mistriage
+            risk_probs = risk_model.predict_proba(df)[0]
+            # If the risk model was binary 0/1, index 1 is the positive outcome
+            risk_prob = float(risk_probs[1]) if len(risk_probs) > 1 else float(risk_probs[0])
+        except Exception as e:
+            print(f"Risk prediction failed: {e}")
+    
+    # 4. Decision Support Layer (Clinical Rules)
     final_class_int, alerts = apply_clinical_rules(patient, predicted_class_int, ml_confidence)
-    final_class = URGENCY_CLASSES[final_class_int]
+    final_class = URGENCY_CLASSES.get(final_class_int, "Unknown")
     
-    # Feature importance retrieval (mocked for simplicity, could extract real if requested)
-    # The Random Forest provides actual importance across the dataset, but not individual SHAP explicitly here.
-    # Instead, we just pass the most important raw features back.
+    # 5. Influence Factors (High risk markers)
     critical_features = []
-    if final_class_int == 2:
-        if patient.spo2 < 92: critical_features.append({"name": "SpO2", "value": f"{patient.spo2}%", "risk": "High"})
-        if patient.sbp < 90: critical_features.append({"name": "Systolic BP", "value": patient.sbp, "risk": "High"})
-        if patient.hr > 130: critical_features.append({"name": "Heart Rate", "value": patient.hr, "risk": "High"})
+    if final_class_int == 1:
+        if patient.hr > 120: critical_features.append({"name": "Heart Rate", "value": patient.hr, "risk": "High"})
+        if patient.spo2 is not None and patient.spo2 < 92: 
+            critical_features.append({"name": "SpO2 (Saturation)", "value": f"{patient.spo2}%", "risk": "Critical"})
+        if patient.sbp < 90: critical_features.append({"name": "Blood Pressure", "value": f"{patient.sbp}/{patient.dbp}", "risk": "High"})
 
     response = {
         "original_ml_prediction": ml_prediction_class,
         "final_recommendation": final_class,
         "confidence_score": ml_confidence,
+        "risk_score": risk_prob,
+        "mistriage_risk_alert": risk_prob > 0.5,
         "probabilities": {
-            "Non-Urgent": float(probabilities[0]),
-            "Urgent": float(probabilities[1]),
-            "Emergency": float(probabilities[2])
+            "Non-critical": float(probabilities[0]),
+            "Critical": float(probabilities[1])
         },
         "overridden_by_rules": final_class_int != predicted_class_int,
         "alerts": alerts,
@@ -78,4 +101,8 @@ async def predict_triage(patient: PatientData):
 
 @app.get("/api/status")
 async def status():
-    return {"status": "ok", "model_loaded": rf_model is not None}
+    return {
+        "status": "ok", 
+        "urgency_model_loaded": urgency_model is not None,
+        "risk_model_loaded": risk_model is not None
+    }
