@@ -19,6 +19,13 @@ leakage_cols = ['Diagnosis in ED', 'Disposition', 'Error_group', 'Length of stay
 df_care = df1.drop(columns=[col for col in leakage_cols if col in df1.columns]).copy()
 df_care = df_care.dropna(subset=[target])
 
+# Fix formatting of vital signs that pandas treated as strings due to commas
+vitals = ['SBP', 'DBP', 'HR', 'RR', 'BT', 'Saturation', 'NRS_pain']
+for v in vitals:
+    if v in df_care.columns:
+        df_care[v] = df_care[v].astype(str).str.replace(',', '.')
+        df_care[v] = pd.to_numeric(df_care[v], errors='coerce')
+
 y = df_care[target].astype(int)
 X = df_care.drop(columns=[target])
 

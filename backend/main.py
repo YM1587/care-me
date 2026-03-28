@@ -20,15 +20,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "triage_rf_model.joblib")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "triage_model_pipeline.joblib")
 
 # Load ML Model
 rf_model = None
 if os.path.exists(MODEL_PATH):
     rf_model = joblib.load(MODEL_PATH)
-    print("Pre-trained Random Forest model loaded successfully.")
+    print("Pre-trained Random Forest Pipeline loaded successfully.")
 else:
-    print("Warning: Model not found at startup. Run `python train_model.py`.")
+    print(f"Warning: Model not found at {MODEL_PATH}.")
 
 @app.post("/api/predict")
 async def predict_triage(patient: PatientData):

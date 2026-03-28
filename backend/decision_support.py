@@ -36,8 +36,8 @@ def apply_clinical_rules(patient: PatientData, ml_prediction: int, ml_confidence
         alerts.append("CRITICAL: Severe Tachypnea (RR > 28). Respiratory distress risk. Escalated to Emergency.")
         final_class = 2
         
-    if patient.mental_state and patient.mental_state.lower() != "alert":
-        alerts.append(f"WARNING: Altered mental state recognized ({patient.mental_state}). Check airway.")
+    if patient.mental_state and patient.mental_state != 1:
+        alerts.append(f"WARNING: Altered mental state recognized (Code {patient.mental_state}). Check airway.")
         if final_class < 1:
              final_class = 1 # At least Urgent
     
