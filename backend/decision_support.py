@@ -1,5 +1,5 @@
 from typing import Dict, List, Tuple
-from .feature_engineering import PatientData
+from feature_engineering import PatientData
 
 URGENCY_CLASSES = {
     0: "Non-Urgent",
