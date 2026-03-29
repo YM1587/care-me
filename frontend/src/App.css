@@ -12,6 +12,8 @@
   --emergency: #ef4444;
   --urgent: #f59e0b;
   --non-urgent: #10b981;
+  --recheck: #fbbf24;
+  --complex: #991b1b;
 }
 
 body {
@@ -293,6 +295,8 @@ input:focus, select:focus {
 .result-panel.emergency { box-shadow: 0 0 30px rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); }
 .result-panel.urgent { box-shadow: 0 0 30px rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); }
 .result-panel.non-urgent { box-shadow: 0 0 30px rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); }
+.result-panel.recheck { box-shadow: 0 0 30px rgba(251, 191, 36, 0.2); border-color: rgba(251, 191, 36, 0.4); }
+.result-panel.complex { box-shadow: 0 0 35px rgba(153, 27, 27, 0.3); border-color: rgba(153, 27, 27, 0.5); }
 
 .animate-pop {
   animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -323,6 +327,8 @@ input:focus, select:focus {
 .recommendation-badge.emergency { background: linear-gradient(135deg, #ef4444, #991b1b); border: 1px solid rgba(255,255,255,0.2); }
 .recommendation-badge.urgent { background: linear-gradient(135deg, #f59e0b, #b45309); border: 1px solid rgba(255,255,255,0.2); }
 .recommendation-badge.non-urgent { background: linear-gradient(135deg, #10b981, #065f46); border: 1px solid rgba(255,255,255,0.2); }
+.recommendation-badge.recheck { background: linear-gradient(135deg, #fbbf24, #d97706); color: #000; border: 1px solid rgba(0,0,0,0.1); }
+.recommendation-badge.complex { background: linear-gradient(135deg, #7f1d1d, #450a0a); border: 2px solid #ef4444; }
 
 .results-header {
   display: flex;
@@ -426,6 +432,62 @@ input:focus, select:focus {
 
 .critical-alert { color: #fca5a5; }
 .warning-alert { color: #fcd34d; }
+
+.rules-card {
+  margin: 1.5rem 0;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.rules-card-header {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.9rem;
+}
+
+.rule-item:last-child {
+  border-bottom: none;
+}
+
+.rule-name {
+  color: var(--text-muted);
+}
+
+.rule-value {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.scenario-desc {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-main);
+  opacity: 0.9;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.scenario-desc.recheck { border-left-color: var(--recheck); }
+.scenario-desc.emergency { border-left-color: var(--emergency); }
+.scenario-desc.complex { border-left-color: var(--complex); }
 
 .probabilities h4 {
   margin-top: 0;

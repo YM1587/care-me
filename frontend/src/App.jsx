@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, HeartPulse, Thermometer, Wind, User, AlertCircle, Stethoscope, Droplets, ShieldAlert, Clock } from 'lucide-react';
+import { Activity, HeartPulse, Thermometer, Wind, User, AlertCircle, Stethoscope, Droplets, ShieldAlert, ShieldCheck, AlertTriangle, Info } from 'lucide-react';
 import './App.css';
 
 const DEFAULT_STATE = {
@@ -8,15 +8,43 @@ const DEFAULT_STATE = {
   sex: "Female",
   arrival_mode: 1,
   injury: 1,
+  chief_complain: "",
   mental_state: 1,
   pain: 1,
-  nrs_pain: 7,
-  sbp: 140,
-  dbp: 90,
-  hr: 88,
-  rr: 18,
-  temp: 37.1,
+  nrs_pain: 0,
+  sbp: 120,
+  dbp: 80,
+  hr: 75,
+  rr: 16,
+  temp: 36.6,
   spo2: 98
+};
+
+const SCENARIO_DATA = {
+  1: {
+    title: "Safe & Stable",
+    desc: "Patient vitals and AI assessment suggest a low-urgency status. Standard observation recommended.",
+    icon: <ShieldCheck size={24} />,
+    colorClass: "non-urgent"
+  },
+  2: {
+    title: "High Mistriage Risk",
+    desc: "AI suggests non-critical status, but clinical patterns indicate high uncertainty. MANUALLY RE-EVALUATE immediately.",
+    icon: <AlertTriangle size={24} />,
+    colorClass: "recheck"
+  },
+  3: {
+    title: "Clinical Emergency",
+    desc: "Patient is critical. Immediate intervention and stabilization required as per standard emergency protocols.",
+    icon: <ShieldAlert size={24} />,
+    colorClass: "emergency"
+  },
+  4: {
+    title: "Complex Critical Case",
+    desc: "Patient is critical with unusual clinical markers. Requires immediate escalation to senior medical staff.",
+    icon: <AlertCircle size={24} />,
+    colorClass: "complex"
+  }
 };
 
 function App() {
@@ -48,7 +76,6 @@ function App() {
     setError(null);
     setResult(null);
 
-    // Prepare data (clear exact age if using range, or vice versa if we had exact)
     const submissionData = { ...formData };
     if (ageType === 'range') {
       submissionData.age = null;
@@ -79,20 +106,14 @@ function App() {
     }
   };
 
-  const getUrgencyColor = (recommendation) => {
-    switch(recommendation) {
-      case 'Critical': return 'emergency';
-      case 'Non-critical': return 'non-urgent';
-      default: return 'neutral';
-    }
-  };
+  const currentScenario = result ? SCENARIO_DATA[result.scenario_id] : null;
 
   return (
     <div className="app-container">
       <header className="app-header">
         <div className="header-brand">
           <HeartPulse size={32} className="brand-icon" />
-          <h1>CareMe Triage Assistant <span className="v2-badge">v2.1</span></h1>
+          <h1>CareMe Triage Assistant <span className="v2-badge">v2.5 Dual-Model</span></h1>
         </div>
         <div className="header-status">
           <span className="status-dot"></span> AI Engines Active
@@ -106,17 +127,21 @@ function App() {
             
             <div className="form-group-row">
               <div className="input-group">
-                <label>Age Input Type</label>
-                <div className="age-toggle">
-                  <button type="button" className={ageType === 'range' ? 'active' : ''} onClick={() => setAgeType('range')}>Range</button>
-                  <button type="button" className={ageType === 'exact' ? 'active' : ''} onClick={() => setAgeType('exact')}>Exact</button>
-                </div>
+                <label>Chief Complaint</label>
+                <input type="text" name="chief_complain" value={formData.chief_complain} onChange={handleInputChange} placeholder="Reason for visit..." required />
               </div>
             </div>
 
             <div className="form-group-row">
               <div className="input-group">
-                <label>{ageType === 'exact' ? 'Exact Age' : 'Estimated Age Range'}</label>
+                <label>Age Input Mode</label>
+                <div className="age-toggle">
+                  <button type="button" className={ageType === 'range' ? 'active' : ''} onClick={() => setAgeType('range')}>Range</button>
+                  <button type="button" className={ageType === 'exact' ? 'active' : ''} onClick={() => setAgeType('exact')}>Exact</button>
+                </div>
+              </div>
+              <div className="input-group">
+                <label>{ageType === 'exact' ? 'Exact Age' : 'Estimated Range'}</label>
                 {ageType === 'exact' ? (
                   <input type="number" name="age" value={formData.age ?? ''} onChange={handleInputChange} min="0" max="120" placeholder="Years" required />
                 ) : (
@@ -128,6 +153,9 @@ function App() {
                   </select>
                 )}
               </div>
+            </div>
+
+            <div className="form-group-row">
               <div className="input-group">
                 <label>Sex</label>
                 <select name="sex" value={formData.sex} onChange={handleInputChange}>
@@ -135,9 +163,6 @@ function App() {
                   <option value="Female">Female</option>
                 </select>
               </div>
-            </div>
-
-            <div className="form-group-row">
               <div className="input-group">
                 <label>Arrival Mode</label>
                 <select name="arrival_mode" value={formData.arrival_mode} onChange={handleInputChange}>
@@ -147,6 +172,9 @@ function App() {
                   <option value={7}>Other</option>
                 </select>
               </div>
+            </div>
+
+            <div className="form-group-row">
               <div className="input-group">
                 <label>Mental State</label>
                 <select name="mental_state" value={formData.mental_state} onChange={handleInputChange}>
@@ -156,9 +184,6 @@ function App() {
                   <option value={4}>Unresponsive</option>
                 </select>
               </div>
-            </div>
-
-            <div className="form-group-row">
               <div className="input-group">
                 <label>Injury / Trauma</label>
                 <select name="injury" value={formData.injury} onChange={handleInputChange}>
@@ -166,6 +191,9 @@ function App() {
                   <option value={2}>Yes</option>
                 </select>
               </div>
+            </div>
+
+            <div className="form-group-row">
               <div className="input-group">
                 <label>Pain Context</label>
                 <div className="pain-inputs">
@@ -174,7 +202,7 @@ function App() {
                     <option value={1}>Pain Present</option>
                   </select>
                   {formData.pain === 1 && (
-                    <input type="number" name="nrs_pain" title="NRS Pain Scale (0-10)" placeholder="0-10" value={formData.nrs_pain ?? ''} onChange={handleInputChange} min="0" max="10" />
+                    <input type="number" name="nrs_pain" title="NRS Scale (0-10)" placeholder="0-10" value={formData.nrs_pain ?? ''} onChange={handleInputChange} min="0" max="10" />
                   )}
                 </div>
               </div>
@@ -184,7 +212,7 @@ function App() {
               <h3><Activity size={18}/> Vitals Assessment</h3>
               <div className="vitals-grid">
                 <div className="input-group vital-group">
-                  <label><HeartPulse size={14}/> SBP</label>
+                  <label><HeartPulse size={14} color={formData.sbp < 80 || formData.sbp > 180 ? '#ef4444' : '#94a3b8'}/> SBP</label>
                   <input type="number" name="sbp" value={formData.sbp ?? ''} onChange={handleInputChange} required />
                 </div>
                 <div className="input-group vital-group">
@@ -192,7 +220,7 @@ function App() {
                   <input type="number" name="dbp" value={formData.dbp ?? ''} onChange={handleInputChange} required />
                 </div>
                 <div className="input-group vital-group">
-                  <label><Activity size={14}/> Heart Rate</label>
+                  <label><Activity size={14} color={formData.hr > 140 ? '#ef4444' : '#94a3b8'}/> Heart Rate</label>
                   <input type="number" name="hr" value={formData.hr ?? ''} onChange={handleInputChange} required />
                 </div>
                 <div className="input-group vital-group">
@@ -204,19 +232,19 @@ function App() {
                   <input type="number" name="temp" value={formData.temp ?? ''} onChange={handleInputChange} step="0.1" required />
                 </div>
                 <div className="input-group vital-group">
-                  <label><Droplets size={14}/> SpO2 (%)</label>
-                  <input type="number" name="spo2" value={formData.spo2 ?? ''} placeholder="Auto (98%)" onChange={handleInputChange} />
+                  <label><Droplets size={14} color={formData.spo2 < 90 ? '#ef4444' : '#94a3b8'}/> SpO2 (%)</label>
+                  <input type="number" name="spo2" value={formData.spo2 ?? ''} placeholder="98%" onChange={handleInputChange} />
                 </div>
               </div>
             </div>
 
             <button type="submit" disabled={loading} className="analyze-btn">
-              {loading ? <span className="loader"></span> : <span><Stethoscope size={18}/> Run Multi-Model Assessment</span>}
+              {loading ? <span className="loader"></span> : <span><Stethoscope size={20}/> RUN DUAL-MODEL ANALYSIS</span>}
             </button>
           </form>
         </section>
 
-        <section className={`result-panel glass-panel ${result ? getUrgencyColor(result.final_recommendation) : ''}`}>
+        <section className={`result-panel glass-panel ${currentScenario ? currentScenario.colorClass : ''}`}>
           {error && (
             <div className="error-box animate-shake">
               <AlertCircle size={24}/>
@@ -226,16 +254,17 @@ function App() {
 
           {!result && !error && !loading && (
             <div className="empty-state">
-              <HeartPulse size={48} className="empty-icon" />
-              <h3>Awaiting Diagnostics</h3>
-              <p>Complete the patient assessment to generate AI recommendations and risk scores.</p>
+              <ShieldCheck size={48} className="empty-icon" />
+              <h3>Intelligence Ready</h3>
+              <p>Enter patient data and click "Analyze" to run the decision-support engine.</p>
             </div>
           )}
 
           {loading && (
             <div className="empty-state">
               <span className="large-loader"></span>
-              <h3>Consulting Urgency & Risk Models...</h3>
+              <h3>Consulting AI Engines...</h3>
+              <p>Standardizing urgency with XGBoost & checking safety with Random Forest.</p>
             </div>
           )}
 
@@ -243,40 +272,48 @@ function App() {
             <div className="results-content animate-pop">
               <div className="results-header">
                 <h2>Clinical Recommendation</h2>
-                <div className={`recommendation-badge ${getUrgencyColor(result.final_recommendation)}`}>
-                  {result.final_recommendation === 'Critical' ? '🚨 Critical' : '✅ Non-critical'}
+                <div className={`recommendation-badge ${currentScenario.colorClass}`}>
+                  {result.final_recommendation}
                 </div>
               </div>
               
+              <div className={`scenario-desc ${currentScenario.colorClass}`}>
+                <strong>{currentScenario.title}:</strong> {currentScenario.desc}
+              </div>
+
+              {result.rule_breaches && Object.keys(result.rule_breaches).length > 0 && (
+                <div className="rules-card">
+                  <div className="rules-card-header">
+                    <AlertCircle size={16} /> Clinical Threshold Breaches
+                  </div>
+                  {Object.entries(result.rule_breaches).map(([name, value]) => (
+                    <div className="rule-item" key={name}>
+                      <span className="rule-name">{name}</span>
+                      <span className="rule-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="metrics-row">
                 <div className="metric-box">
                   <span>Urgency Confidence</span>
                   <strong>{(result.confidence_score * 100).toFixed(1)}%</strong>
                 </div>
                 <div className="metric-box">
-                  <span>Mistriage Risk</span>
+                  <span>Safety Risk Profile</span>
                   <strong className={result.mistriage_risk_alert ? 'text-danger' : ''}>
-                    {(result.risk_score * 100).toFixed(1)}%
+                    {result.mistriage_risk_alert ? 'High Risk' : 'Low Risk'}
                   </strong>
                 </div>
               </div>
 
-              {result.mistriage_risk_alert && (
-                <div className="mistriage-risk-panel">
-                  <ShieldAlert size={20} />
-                  <div>
-                    <h4>High Mistriage Risk Detected</h4>
-                    <p>The models suggest a potential mismatch between clinical presentation and automated classification. Extreme caution advised.</p>
-                  </div>
-                </div>
-              )}
-
               {result.alerts && result.alerts.length > 0 && (
                 <div className="alerts-container">
-                  <h4><AlertCircle size={16}/> Clinical Safety Overrides</h4>
+                  <h4><Info size={16}/> Clinical Insights</h4>
                   <ul>
                     {result.alerts.map((alert, idx) => (
-                      <li key={idx} className={alert.includes('CRITICAL') ? 'critical-alert' : 'warning-alert'}>
+                      <li key={idx} className={alert.includes('🚨') || alert.includes('⚠️') ? 'warning-alert' : 'info-alert'}>
                         {alert}
                       </li>
                     ))}
@@ -285,33 +322,20 @@ function App() {
               )}
 
               <div className="probabilities">
-                <h4>Urgency Probability Distribution</h4>
-                {['Critical', 'Non-critical'].map(label => (
+                <h4>AI Prediction Probabilities</h4>
+                {Object.entries(result.probabilities).map(([label, val]) => (
                   <div className="prob-bar-container" key={label}>
                     <div className="prob-label">{label}</div>
                     <div className="prob-track">
                       <div 
-                        className={`prob-fill ${getUrgencyColor(label)}`} 
-                        style={{width: `${(result.probabilities[label] || 0) * 100}%`}}
+                        className={`prob-fill ${label === 'Critical' ? 'emergency' : 'non-urgent'}`} 
+                        style={{width: `${val * 100}%`}}
                       ></div>
                     </div>
-                    <div className="prob-pct">{((result.probabilities[label] || 0) * 100).toFixed(1)}%</div>
+                    <div className="prob-pct">{(val * 100).toFixed(1)}%</div>
                   </div>
                 ))}
               </div>
-
-              {result.influential_features && result.influential_features.length > 0 && (
-                <div className="influential-factors">
-                  <h4>Key Risk Factors</h4>
-                  <div className="factors-row">
-                    {result.influential_features.map((f, i) => (
-                      <div key={i} className={`factor-tag ${f.risk.toLowerCase()}`}>
-                        {f.name}: {f.value}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </section>

@@ -71,31 +71,24 @@ async def predict_triage(patient: PatientData):
         except Exception as e:
             print(f"Risk prediction failed: {e}")
     
-    # 4. Decision Support Layer (Clinical Rules)
-    final_class_int, alerts = apply_clinical_rules(patient, predicted_class_int, ml_confidence)
-    final_class = URGENCY_CLASSES.get(final_class_int, "Unknown")
+    # 4. Decision Support Layer (Clinical Rules & Scenario Mapping)
+    recommendation, alerts, breaches, scenario_id = apply_clinical_rules(
+        patient, predicted_class_int, ml_confidence, risk_prob
+    )
     
-    # 5. Influence Factors (High risk markers)
-    critical_features = []
-    if final_class_int == 1:
-        if patient.hr > 120: critical_features.append({"name": "Heart Rate", "value": patient.hr, "risk": "High"})
-        if patient.spo2 is not None and patient.spo2 < 92: 
-            critical_features.append({"name": "SpO2 (Saturation)", "value": f"{patient.spo2}%", "risk": "Critical"})
-        if patient.sbp < 90: critical_features.append({"name": "Blood Pressure", "value": f"{patient.sbp}/{patient.dbp}", "risk": "High"})
-
     response = {
         "original_ml_prediction": ml_prediction_class,
-        "final_recommendation": final_class,
+        "final_recommendation": recommendation,
         "confidence_score": ml_confidence,
         "risk_score": risk_prob,
-        "mistriage_risk_alert": risk_prob > 0.5,
+        "mistriage_risk_alert": risk_prob > 0.45,
+        "scenario_id": scenario_id,
         "probabilities": {
             "Non-critical": float(probabilities[0]),
             "Critical": float(probabilities[1])
         },
-        "overridden_by_rules": final_class_int != predicted_class_int,
-        "alerts": alerts,
-        "influential_features": critical_features
+        "rule_breaches": breaches,
+        "alerts": alerts
     }
     
     return response
