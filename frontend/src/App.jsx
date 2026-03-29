@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { Activity, HeartPulse, Thermometer, Wind, User, AlertCircle, Stethoscope, Droplets, ShieldAlert } from 'lucide-react';
+import { Activity, HeartPulse, Thermometer, Wind, User, AlertCircle, Stethoscope, Droplets, ShieldAlert, Clock } from 'lucide-react';
 import './App.css';
 
 const DEFAULT_STATE = {
-  age: 45,
+  age: null,
+  age_group: 1, // Default to 19-40
   sex: "Female",
-  arrival_mode: 1, // 1=Walk-in, 3=Ambulance
-  injury: 1, // 1=No, 2=Yes
-  mental_state: 1, // 1=Alert, 4=Unresponsive
-  pain: 1, // 1=Yes, 0=No
-  nrs_pain: 7, // 0-10
+  arrival_mode: 1,
+  injury: 1,
+  mental_state: 1,
+  pain: 1,
+  nrs_pain: 7,
   sbp: 140,
   dbp: 90,
   hr: 88,
@@ -20,6 +21,7 @@ const DEFAULT_STATE = {
 
 function App() {
   const [formData, setFormData] = useState(DEFAULT_STATE);
+  const [ageType, setAgeType] = useState('range'); // 'exact' or 'range'
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -30,8 +32,8 @@ function App() {
     
     if (type === 'number') {
       parsedValue = value === '' ? null : parseFloat(value);
-    } else if (['injury', 'pain', 'arrival_mode', 'mental_state'].includes(name)) {
-      parsedValue = parseInt(value, 10);
+    } else if (['injury', 'pain', 'arrival_mode', 'mental_state', 'age_group'].includes(name)) {
+      parsedValue = value === '' ? null : parseInt(value, 10);
     }
     
     setFormData(prev => ({
@@ -46,13 +48,21 @@ function App() {
     setError(null);
     setResult(null);
 
+    // Prepare data (clear exact age if using range, or vice versa if we had exact)
+    const submissionData = { ...formData };
+    if (ageType === 'range') {
+      submissionData.age = null;
+    } else {
+      submissionData.age_group = null;
+    }
+
     try {
       const response = await fetch('http://localhost:8000/api/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
 
       if (!response.ok) {
@@ -82,7 +92,7 @@ function App() {
       <header className="app-header">
         <div className="header-brand">
           <HeartPulse size={32} className="brand-icon" />
-          <h1>CareMe Triage Assistant <span className="v2-badge">v2.0</span></h1>
+          <h1>CareMe Triage Assistant <span className="v2-badge">v2.1</span></h1>
         </div>
         <div className="header-status">
           <span className="status-dot"></span> AI Engines Active
@@ -96,8 +106,27 @@ function App() {
             
             <div className="form-group-row">
               <div className="input-group">
-                <label>Age</label>
-                <input type="number" name="age" value={formData.age ?? ''} onChange={handleInputChange} min="0" max="120" required />
+                <label>Age Input Type</label>
+                <div className="age-toggle">
+                  <button type="button" className={ageType === 'range' ? 'active' : ''} onClick={() => setAgeType('range')}>Range</button>
+                  <button type="button" className={ageType === 'exact' ? 'active' : ''} onClick={() => setAgeType('exact')}>Exact</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group-row">
+              <div className="input-group">
+                <label>{ageType === 'exact' ? 'Exact Age' : 'Estimated Age Range'}</label>
+                {ageType === 'exact' ? (
+                  <input type="number" name="age" value={formData.age ?? ''} onChange={handleInputChange} min="0" max="120" placeholder="Years" required />
+                ) : (
+                  <select name="age_group" value={formData.age_group ?? ''} onChange={handleInputChange} required>
+                    <option value={0}>Pediatric (0-18)</option>
+                    <option value={1}>Young Adult (19-40)</option>
+                    <option value={2}>Middle Aged (41-65)</option>
+                    <option value={3}>Senior (66+)</option>
+                  </select>
+                )}
               </div>
               <div className="input-group">
                 <label>Sex</label>
