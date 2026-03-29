@@ -120,102 +120,131 @@ function App() {
 
       <main className="dashboard">
         <section className="input-panel glass-panel">
-          <h2><User size={20}/> Patient Triage Record</h2>
+          <h2><User size={20}/> Triage Input Console</h2>
           <form onSubmit={handleSubmit} className="triage-form">
-            <div className="form-group-row">
-              <div className="input-group full-width">
-                <label>Chief Complaint (Optional)</label>
-                <input type="text" name="chief_complain" value={formData.chief_complain} onChange={handleInputChange} placeholder="e.g. Chest pain, difficulty breathing (leave blank if unresponsive)" />
+            
+            {/* MODULE 1: PATIENT DEMOGRAPHICS */}
+            <div className="form-module">
+              <div className="module-header">
+                <User size={14}/> Patient Demographics
               </div>
-            </div>
-
-            <div className="form-group-row">
-              <div className="input-group">
-                <label>Age Selection Mode</label>
-                <div className="age-toggle">
-                  <button type="button" className={ageType === 'range' ? 'active' : ''} onClick={() => setAgeType('range')}>Group</button>
-                  <button type="button" className={ageType === 'exact' ? 'active' : ''} onClick={() => setAgeType('exact')}>Exact</button>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>{ageType === 'exact' ? 'Exact Age' : 'Age Group'}</label>
-                {ageType === 'exact' ? (
-                  <input type="number" name="age" value={formData.age ?? ''} onChange={handleInputChange} min="0" max="110" required />
-                ) : (
-                  <select name="age_group" value={formData.age_group ?? ''} onChange={handleInputChange} required>
-                    <option value={0}>Pediatric (0-18)</option>
-                    <option value={1}>Young Adult (19-40)</option>
-                    <option value={2}>Middle Aged (41-65)</option>
-                    <option value={3}>Senior (66+)</option>
-                  </select>
-                )}
-              </div>
-            </div>
-
-            <div className="form-group-row">
-              <div className="input-group">
-                <label>Arrival Mode</label>
-                <select name="arrival_mode" value={formData.arrival_mode} onChange={handleInputChange}>
-                  <option value={1}>Walk-in</option>
-                  <option value={2}>Car</option>
-                  <option value={3}>Ambulance</option>
-                  <option value={7}>Other</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label>Mental State</label>
-                <select name="mental_state" value={formData.mental_state} onChange={handleInputChange}>
-                  <option value={1}>1: Alert (Stable)</option>
-                  <option value={2}>2: Verbal (Review)</option>
-                  <option value={3}>3: Pain (Critical)</option>
-                  <option value={4}>4: Unresponsive (Critical)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group-row">
-              <div className="input-group">
-                <label>Injury / Trauma</label>
-                <select name="injury" value={formData.injury} onChange={handleInputChange}>
-                  <option value={1}>No Trauma</option>
-                  <option value={2}>Traumatic Event</option>
-                </select>
-              </div>
-              <div className="input-group">
-                <label>Pain Assessment</label>
-                <div className="pain-inputs">
-                  <select name="pain" value={formData.pain} onChange={handleInputChange}>
-                    <option value={0}>No Pain</option>
-                    <option value={1}>Pain Present</option>
-                  </select>
-                  {formData.pain === 1 && (
-                    <input type="number" name="nrs_pain" title="NRS (0-10)" placeholder="0-10" value={formData.nrs_pain ?? ''} onChange={handleInputChange} min="0" max="10" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="vitals-section">
-              <h3><Activity size={18}/> Vitals Assessment</h3>
-              <div className="vitals-grid">
-                {[
-                  { label: 'SBP', name: 'sbp', icon: <HeartPulse size={14}/>, alert: formData.sbp < 90 || formData.sbp > 180 },
-                  { label: 'DBP', name: 'dbp', icon: <HeartPulse size={14} className="faded"/> },
-                  { label: 'Heart Rate', name: 'hr', icon: <Activity size={14}/>, alert: formData.hr > 130 || formData.hr < 40 },
-                  { label: 'Resp Rate', name: 'rr', icon: <Wind size={14}/>, alert: formData.rr > 30 || formData.rr < 8 },
-                  { label: 'Temp', name: 'temp', icon: <Thermometer size={14}/>, alert: formData.temp > 39 || formData.temp < 35 },
-                  { label: 'SpO2 (%)', name: 'spo2', icon: <Droplets size={14}/>, alert: formData.spo2 < 90 }
-                ].map(v => (
-                  <div className="input-group vital-group" key={v.name}>
-                    <label className={v.alert ? 'text-urgent' : ''}>{v.icon} {v.label}</label>
-                    <input type="number" name={v.name} value={formData[v.name] ?? ''} onChange={handleInputChange} step={v.name === 'temp' ? '0.1' : '1'} required={v.name !== 'spo2'} />
+              <div className="module-content">
+                <div className="form-group-row">
+                  <div className="input-group">
+                    <label>Biological Sex</label>
+                    <select name="sex" value={formData.sex} onChange={handleInputChange}>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
                   </div>
-                ))}
+                  <div className="input-group">
+                    <label>Age Entry Mode</label>
+                    <div className="age-toggle">
+                      <button type="button" className={ageType === 'range' ? 'active' : ''} onClick={() => setAgeType('range')}>Group</button>
+                      <button type="button" className={ageType === 'exact' ? 'active' : ''} onClick={() => setAgeType('exact')}>Exact</button>
+                    </div>
+                  </div>
+                </div>
+                <div className="form-group-row">
+                  <div className="input-group full-width">
+                    <label>{ageType === 'exact' ? 'Exact Age (Years)' : 'Estimated Age Group'}</label>
+                    {ageType === 'exact' ? (
+                      <input type="number" name="age" value={formData.age ?? ''} onChange={handleInputChange} min="0" max="110" placeholder="Enter age..." required />
+                    ) : (
+                      <select name="age_group" value={formData.age_group ?? ''} onChange={handleInputChange} required>
+                        <option value={0}>Pediatric (0-18)</option>
+                        <option value={1}>Young Adult (19-40)</option>
+                        <option value={2}>Middle Aged (41-65)</option>
+                        <option value={3}>Senior (66+)</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MODULE 2: CLINICAL ASSESSMENT */}
+            <div className="form-module">
+              <div className="module-header">
+                <Stethoscope size={14}/> Clinical Assessment
+              </div>
+              <div className="module-content">
+                <div className="form-group-row">
+                  <div className="input-group full-width">
+                    <label>Chief Complaint (Optional)</label>
+                    <input type="text" name="chief_complain" value={formData.chief_complain} onChange={handleInputChange} placeholder="Unresponsive / Unknown..." />
+                  </div>
+                </div>
+                <div className="form-group-row">
+                  <div className="input-group">
+                    <label>Arrival Mode</label>
+                    <select name="arrival_mode" value={formData.arrival_mode} onChange={handleInputChange}>
+                      <option value={1}>Walk-in</option>
+                      <option value={2}>Car</option>
+                      <option value={3}>Ambulance</option>
+                      <option value={7}>Other</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Level of Consciousness</label>
+                    <select name="mental_state" value={formData.mental_state} onChange={handleInputChange}>
+                      <option value={1}>1: Alert</option>
+                      <option value={2}>2: Verbal</option>
+                      <option value={3}>3: Pain</option>
+                      <option value={4}>4: Unresponsive</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group-row">
+                  <div className="input-group">
+                    <label>Injury / Trauma</label>
+                    <select name="injury" value={formData.injury} onChange={handleInputChange}>
+                      <option value={1}>Non-traumatic</option>
+                      <option value={2}>Traumatic Injury</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label>Pain Scale (NRS)</label>
+                    <div className="pain-inputs">
+                      <select name="pain" value={formData.pain} onChange={handleInputChange}>
+                        <option value={0}>No Pain</option>
+                        <option value={1}>Painful</option>
+                      </select>
+                      {formData.pain === 1 && (
+                        <input type="number" name="nrs_pain" placeholder="0-10" value={formData.nrs_pain ?? ''} onChange={handleInputChange} min="0" max="10" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MODULE 3: VITALS CONSOLE */}
+            <div className="form-module">
+              <div className="module-header">
+                <Activity size={14}/> Vitals Console
+              </div>
+              <div className="module-content">
+                <div className="vitals-grid">
+                  {[
+                    { label: 'SBP', name: 'sbp', icon: <HeartPulse size={12}/>, alert: formData.sbp < 90 || formData.sbp > 180 },
+                    { label: 'DBP', name: 'dbp', icon: <HeartPulse size={12} className="faded"/> },
+                    { label: 'HR', name: 'hr', icon: <Activity size={12}/>, alert: formData.hr > 130 || formData.hr < 40 },
+                    { label: 'RR', name: 'rr', icon: <Wind size={12}/>, alert: formData.rr > 30 || formData.rr < 8 },
+                    { label: 'Temp', name: 'temp', icon: <Thermometer size={12}/>, alert: formData.temp > 38.5 || formData.temp < 35.5 },
+                    { label: 'SpO2', name: 'spo2', icon: <Droplets size={12}/>, alert: formData.spo2 < 92 }
+                  ].map(v => (
+                    <div className="input-group" key={v.name}>
+                      <label className={v.alert ? 'text-urgent' : ''}>{v.label}</label>
+                      <input type="number" name={v.name} value={formData[v.name] ?? ''} onChange={handleInputChange} step={v.name === 'temp' ? '0.1' : '1'} required={v.name !== 'spo2'} />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             <button type="submit" disabled={loading} className="analyze-btn">
-              {loading ? <span className="loader"></span> : <span><Stethoscope size={20}/> Calculate Clinical Decision Support</span>}
+              {loading ? <span className="loader"></span> : <span><Cpu size={18}/> Run Clinical Analysis Engine</span>}
             </button>
           </form>
         </section>

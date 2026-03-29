@@ -86,27 +86,27 @@ def apply_clinical_rules(patient: PatientData, ml_prediction: int, ml_confidence
     # SCENARIO DETERMINATION
     if is_critical_override:
         scenario_id = 3 # Confirmed Critical (Override)
-        recommendation = "🚨 Critical (Safety Override - Vital Signs)"
+        recommendation = "Critical (Safety Override - Vital Signs)"
         alerts.append("CRITICAL: Patient vitals indicate immediate life threat. Standard Protocols: Level 1 (Resuscitation).")
     
     elif is_ml_critical:
         if is_high_risk:
             scenario_id = 4 # Complex Critical
-            recommendation = "🚨 Critical (High AI Risk - Review Immediately)"
+            recommendation = "Critical (High AI Risk - Review Immediately)"
             alerts.append("URGENT: ML flags critical status with high uncertainty. Comprehensive diagnostic review required.")
         else:
             scenario_id = 3 # Confirmed Critical
-            recommendation = "🚨 Critical (AI Recommendation)"
+            recommendation = "Critical (AI Recommendation)"
             alerts.append("URGENT: AI predicts high acuity. Move to stabilization area.")
             
     elif is_high_risk or is_urgent_override:
         scenario_id = 2 # Re-evaluate
-        recommendation = "⚠️ Re-evaluate Patient (Safety Alert)"
+        recommendation = "Re-evaluate Patient (Safety Alert)"
         alerts.append("WARNING: AI predicts stability but Clinical Rules or Risk Model flag potential mistriage. Reassess vitals manually.")
         
     else:
         scenario_id = 1 # Safe
-        recommendation = "✅ Non-critical (Care Plan Validated)"
+        recommendation = "Non-critical (Care Plan Validated)"
         alerts.append("STABLE: Patient currently stable. Routine monitoring and standard care protocol initiated.")
 
     return recommendation, alerts, rule_breaches, scenario_id, clinical_warnings
