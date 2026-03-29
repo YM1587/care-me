@@ -7,7 +7,7 @@ import numpy as np
 
 # Use local module imports
 from feature_engineering import PatientData, engineer_features
-from decision_support import apply_clinical_rules, URGENCY_CLASSES
+from decision_support import apply_clinical_rules
 
 app = FastAPI(title="CareMe AI-Powered Triage API")
 
@@ -57,7 +57,7 @@ async def predict_triage(patient: PatientData):
         raise HTTPException(status_code=500, detail=f"Prediction error (Urgency): {str(e)}")
     
     ml_confidence = float(np.max(probabilities))
-    ml_prediction_class = URGENCY_CLASSES.get(predicted_class_int, "Unknown")
+    ml_prediction_class = "Critical" if predicted_class_int == 1 else "Non-critical"
     
     # 3. Risk (Mistriage) Prediction
     risk_prob = 0.0
@@ -71,24 +71,30 @@ async def predict_triage(patient: PatientData):
         except Exception as e:
             print(f"Risk prediction failed: {e}")
     
-    # 4. Decision Support Layer (Clinical Rules & Scenario Mapping)
-    recommendation, alerts, breaches, scenario_id = apply_clinical_rules(
+    # 4. Decision Support Layer (SATS/KTAS Standardized Logic)
+    recommendation, alerts, breaches, scenario_id, warnings = apply_clinical_rules(
         patient, predicted_class_int, ml_confidence, risk_prob
     )
     
+    # 5. SEGREGATED RESPONSE (Explainability segments)
     response = {
-        "original_ml_prediction": ml_prediction_class,
-        "final_recommendation": recommendation,
-        "confidence_score": ml_confidence,
-        "risk_score": risk_prob,
-        "mistriage_risk_alert": risk_prob > 0.45,
-        "scenario_id": scenario_id,
-        "probabilities": {
-            "Non-critical": float(probabilities[0]),
-            "Critical": float(probabilities[1])
+        "ai_insights": {
+            "prediction": ml_prediction_class,
+            "confidence": ml_confidence,
+            "mistriage_risk": risk_prob,
+            "risk_label": "High" if risk_prob > 0.45 else "Low",
+            "probabilities": {
+                "Non-critical": float(probabilities[0]),
+                "Critical": float(probabilities[1])
+            }
         },
-        "rule_breaches": breaches,
-        "alerts": alerts
+        "clinical_protocol": {
+            "final_recommendation": recommendation,
+            "scenario_id": scenario_id,
+            "rule_breaches": breaches, # Critical (Red)
+            "rule_warnings": warnings, # Urgent (Orange/Yellow)
+            "alerts": alerts
+        }
     }
     
     return response

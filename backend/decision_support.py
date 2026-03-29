@@ -1,74 +1,112 @@
 from typing import Dict, List, Tuple
 from feature_engineering import PatientData
 
-URGENCY_CLASSES = {
-    0: "Non-critical",
-    1: "Critical"
-}
-
-def apply_clinical_rules(patient: PatientData, ml_prediction: int, ml_confidence: float, risk_prob: float) -> Tuple[str, List[str], Dict[str, str], int]:
+def apply_clinical_rules(patient: PatientData, ml_prediction: int, ml_confidence: float, risk_prob: float) -> Tuple[str, List[str], Dict[str, str], int, Dict[str, str]]:
     """
-    Applies strict clinical thresholds and uses the Mistriage Risk Model (risk_prob)
-    to determine the final clinical scenario.
+    Applies strict clinical thresholds (SATS/KTAS) and uses the Mistriage Risk Model
+    to determine the final clinical scenario and recommendation.
     
     Returns:
-        Tuple of (Final Recommendation String, List of Alert Strings, Dictionary of Rule Breaches, Scenario ID)
-        Scenario IDs:
-            1: Safe (Non-critical)
-            2: Recheck (Non-critical ML + High Risk)
-            3: Confirmed Critical (Critical ML + Low Risk)
-            4: Complex Critical (Critical ML + High Risk)
+        Tuple of (
+            Final Recommendation, 
+            Alerts, 
+            Rule Breaches (Critical), 
+            Scenario ID, 
+            Clinical Warnings (Urgent)
+        )
     """
     alerts = []
-    rule_breaches = {}
-    is_critical_by_rules = False
+    rule_breaches = {} # Critical (Red)
+    clinical_warnings = {} # Urgent (Orange/Yellow)
     
-    # 1. CRITICAL OVERRIDES (Hard Rules)
-    if patient.hr > 140:
-        rule_breaches["Heart Rate"] = f"{patient.hr} bpm (>140)"
-        is_critical_by_rules = True
+    # 1. Derived Indicators
+    shock_index = patient.hr / patient.sbp if patient.sbp != 0 else 0
+    pulse_pressure = patient.sbp - patient.dbp
     
-    if patient.sbp < 80:
-        rule_breaches["Blood Pressure"] = f"{patient.sbp} mmHg (<80)"
-        is_critical_by_rules = True
+    # 2. EVALUATE THRESHOLDS (Clinically Grounded)
+    
+    # Heart Rate
+    if patient.hr > 130 or patient.hr < 40:
+        rule_breaches["Heart Rate"] = f"{patient.hr} bpm (Severe)"
+    elif (100 <= patient.hr <= 130) or (40 <= patient.hr <= 50):
+        clinical_warnings["Heart Rate"] = f"{patient.hr} bpm (Abnormal)"
         
-    if patient.spo2 is not None and patient.spo2 < 90:
-        rule_breaches["Oxygen (SpO2)"] = f"{patient.spo2}% (<90%)"
-        is_critical_by_rules = True
+    # Blood Pressure (Systolic)
+    if patient.sbp < 90 or patient.sbp > 180:
+        rule_breaches["Blood Pressure"] = f"{patient.sbp} mmHg (Critical)"
+    elif 90 <= patient.sbp <= 100:
+        clinical_warnings["Blood Pressure"] = f"{patient.sbp} mmHg (Borderline)"
+        
+    # Respiratory Rate
+    if patient.rr > 30 or patient.rr < 8:
+        rule_breaches["Resp Rate"] = f"{patient.rr} br/min (Distress)"
+    elif 20 <= patient.rr <= 30 or 8 <= patient.rr <= 12:
+        clinical_warnings["Resp Rate"] = f"{patient.rr} br/min (Elevated)"
+        
+    # Oxygen Saturation
+    if patient.spo2 is not None:
+        if patient.spo2 < 90:
+            rule_breaches["Oxygen (SpO2)"] = f"{patient.spo2}% (Severe Hypoxia)"
+        elif 90 <= patient.spo2 <= 94:
+            clinical_warnings["Oxygen (SpO2)"] = f"{patient.spo2}% (Low)"
+            
+    # Temperature
+    if patient.temp > 39 or patient.temp < 35:
+        rule_breaches["Temperature"] = f"{patient.temp}°C (Critical)"
+    elif 38 <= patient.temp <= 39:
+        clinical_warnings["Temperature"] = f"{patient.temp}°C (Fever)"
+        
+    # Mental Status
+    if patient.mental_state >= 3:
+        rule_breaches["Mental Status"] = f"Code {patient.mental_state} (Severe)"
+    elif patient.mental_state == 2:
+        clinical_warnings["Mental Status"] = f"Code 2 (Altered)"
+        
+    # Shock Index
+    if shock_index > 1.0:
+        rule_breaches["Shock Index"] = f"{shock_index:.2f} (Shock Likely)"
+    elif 0.7 <= shock_index <= 1.0:
+        clinical_warnings["Shock Index"] = f"{shock_index:.2f} (Concerning)"
+        
+    # Pulse Pressure
+    if pulse_pressure < 20:
+        rule_breaches["Pulse Pressure"] = f"{pulse_pressure} mmHg (Narrow)"
+    elif pulse_pressure > 60:
+        clinical_warnings["Pulse Pressure"] = f"{pulse_pressure} mmHg (Wide)"
 
-    if patient.rr > 30:
-        rule_breaches["Resp Rate"] = f"{patient.rr} br/min (>30)"
-        is_critical_by_rules = True
-
-    if patient.mental_state and patient.mental_state > 1:
-        rule_breaches["Mental State"] = f"Altered (Code {patient.mental_state})"
-        is_critical_by_rules = True
-
-    # 2. EVALUATING SCENARIO (Dual Model Logic)
+    # 3. FINAL DECISION LOGIC (The "Brain" Integration)
+    is_critical_override = len(rule_breaches) > 0
+    is_urgent_override = len(clinical_warnings) > 0
+    
     # ml_prediction: 0=Non-critical, 1=Critical
-    # risk_prob: >0.5 is High Risk
+    # risk_prob: >0.45 is High Risk
+    is_ml_critical = (ml_prediction == 1)
+    is_high_risk = (risk_prob > 0.45)
     
-    is_ml_critical = (ml_prediction == 1) or is_critical_by_rules
-    # We use a slightly more sensitive threshold for the safety checker
-    is_high_risk = (risk_prob > 0.40) 
+    # SCENARIO DETERMINATION
+    if is_critical_override:
+        scenario_id = 3 # Confirmed Critical (Override)
+        recommendation = "🚨 Critical (Safety Override - Vital Signs)"
+        alerts.append("CRITICAL: Patient vitals indicate immediate life threat. Standard Protocols: Level 1 (Resuscitation).")
     
-    if is_ml_critical:
+    elif is_ml_critical:
         if is_high_risk:
             scenario_id = 4 # Complex Critical
-            recommendation = "Critical (High Complexity)"
-            alerts.append("⚠️ HIGH COMPLEXITY: Patient is critical and exhibits unusual patterns. Senior review required.")
+            recommendation = "🚨 Critical (High AI Risk - Review Immediately)"
+            alerts.append("URGENT: ML flags critical status with high uncertainty. Comprehensive diagnostic review required.")
         else:
             scenario_id = 3 # Confirmed Critical
-            recommendation = "Critical"
-            alerts.append("✅ CONFIRMED CRITICAL: Immediate clinical intervention required.")
+            recommendation = "🚨 Critical (AI Recommendation)"
+            alerts.append("URGENT: AI predicts high acuity. Move to stabilization area.")
+            
+    elif is_high_risk or is_urgent_override:
+        scenario_id = 2 # Re-evaluate
+        recommendation = "⚠️ Re-evaluate Patient (Safety Alert)"
+        alerts.append("WARNING: AI predicts stability but Clinical Rules or Risk Model flag potential mistriage. Reassess vitals manually.")
+        
     else:
-        if is_high_risk:
-            scenario_id = 2 # Recheck Patient
-            recommendation = "RECHECK PATIENT ⚠️"
-            alerts.append("🚨 SAFETY ALERT: ML says non-critical, but Risk Model detected a high probability of mistriage. RE-EVALUATE MANUALLY.")
-        else:
-            scenario_id = 1 # Safe
-            recommendation = "Non-critical"
-            alerts.append("✔ SAFE STABLE: Patient vitals and AI assessment suggest non-urgent status.")
+        scenario_id = 1 # Safe
+        recommendation = "✅ Non-critical (Care Plan Validated)"
+        alerts.append("STABLE: Patient currently stable. Routine monitoring and standard care protocol initiated.")
 
-    return recommendation, alerts, rule_breaches, scenario_id
+    return recommendation, alerts, rule_breaches, scenario_id, clinical_warnings
