@@ -10,6 +10,7 @@ class PatientData(BaseModel):
     injury: conint(ge=1, le=2)
     
     # Clinical presentation
+    chief_complain: Optional[str] = "None"
     mental_state: conint(ge=1, le=4)
     pain: conint(ge=0, le=1)
     nrs_pain: confloat(ge=0, le=10)
@@ -50,13 +51,13 @@ def engineer_features(patient: PatientData) -> dict:
     age_val = patient.age if patient.age is not None else [9, 30, 52, 75][age_group]
     
     return {
-        "Age": age_val,
+        "Group": 1, # System Default
         "Sex": sex_num,
-        "Age_group": age_group,
+        "Age": age_val,
+        "Patients number per hour": 5, # System Default
         "Arrival mode": patient.arrival_mode,
         "Injury": patient.injury,
-        "Patients number per hour": 5, # System Default
-        "Group": 1, # System Default
+        "Chief_complain": patient.chief_complain or "None",
         "Mental": patient.mental_state,
         "Pain": patient.pain,
         "NRS_pain": patient.nrs_pain,
@@ -66,8 +67,9 @@ def engineer_features(patient: PatientData) -> dict:
         "RR": patient.rr,
         "BT": patient.temp,
         "Saturation": saturation,
-        "Shock_Index": shock_index, # Fixed casing
-        "Pulse_Pressure": pulse_pressure,
+        "KTAS duration_min": 0, # System Default
         "Saturation_missing": sat_missing,
-        "KTAS duration_min": 0 # System Default
+        "Shock_Index": shock_index,
+        "Pulse_Pressure": pulse_pressure,
+        "Age_group": age_group
     }

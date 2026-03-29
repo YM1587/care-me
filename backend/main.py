@@ -20,9 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Paths for the new independent models
-URGENCY_MODEL_PATH = os.path.join(os.path.dirname(__file__), "urgency_model.pkl")
-RISK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "risk_model.pkl")
+# Paths for the new independent models (Pipelines)
+URGENCY_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "urgency_model_xgb.pkl")
+RISK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "mistriage_risk_model_rf.pkl")
 
 # Load ML Models
 urgency_model = None
@@ -63,8 +63,9 @@ async def predict_triage(patient: PatientData):
     risk_prob = 0.0
     if risk_model is not None:
         try:
-            # Assuming risk model predicts 1 for High Risk of Mistriage
-            risk_probs = risk_model.predict_proba(df)[0]
+            # The Risk Model expects 20 features (drops Chief_complain)
+            risk_df = df.drop(columns=["Chief_complain"]) if "Chief_complain" in df.columns else df
+            risk_probs = risk_model.predict_proba(risk_df)[0]
             # If the risk model was binary 0/1, index 1 is the positive outcome
             risk_prob = float(risk_probs[1]) if len(risk_probs) > 1 else float(risk_probs[0])
         except Exception as e:
