@@ -100,7 +100,7 @@ body {
 
 .dashboard {
   display: grid;
-  grid-template-columns: 480px 1fr;
+  grid-template-columns: minmax(420px, 1fr) 1.6fr;
   gap: 2.5rem;
   align-items: flex-start;
 }
@@ -132,8 +132,9 @@ body {
 
 .form-group-row {
   display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
 }
 
 .input-group {
@@ -141,6 +142,11 @@ body {
   flex-direction: column;
   gap: 0.5rem;
   flex: 1;
+  min-width: 180px;
+}
+
+.input-group.full-width {
+  flex: 100%;
 }
 
 .input-group label {
@@ -203,8 +209,8 @@ input:focus, select:focus {
 
 .vitals-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1rem;
 }
 
 .text-urgent { color: var(--emergency); font-weight: 700; }

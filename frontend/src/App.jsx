@@ -109,7 +109,7 @@ function App() {
         <div className="header-brand">
           <HeartPulse size={36} className="brand-icon" />
           <div className="brand-text">
-            <h1>CareMe Triage <span className="v2-badge">v2.5 Hybrid</span></h1>
+            <h1>CareMe</h1>
             <p>Clinically-Safe AI Brain for Emergency Support</p>
           </div>
         </div>
@@ -123,9 +123,9 @@ function App() {
           <h2><User size={20}/> Patient Triage Record</h2>
           <form onSubmit={handleSubmit} className="triage-form">
             <div className="form-group-row">
-              <div className="input-group">
-                <label>Chief Complaint</label>
-                <input type="text" name="chief_complain" value={formData.chief_complain} onChange={handleInputChange} placeholder="Suspected condition..." required />
+              <div className="input-group full-width">
+                <label>Chief Complaint (Optional)</label>
+                <input type="text" name="chief_complain" value={formData.chief_complain} onChange={handleInputChange} placeholder="e.g. Chest pain, difficulty breathing (leave blank if unresponsive)" />
               </div>
             </div>
 
@@ -170,6 +170,28 @@ function App() {
                   <option value={3}>3: Pain (Critical)</option>
                   <option value={4}>4: Unresponsive (Critical)</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="form-group-row">
+              <div className="input-group">
+                <label>Injury / Trauma</label>
+                <select name="injury" value={formData.injury} onChange={handleInputChange}>
+                  <option value={1}>No Trauma</option>
+                  <option value={2}>Traumatic Event</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Pain Assessment</label>
+                <div className="pain-inputs">
+                  <select name="pain" value={formData.pain} onChange={handleInputChange}>
+                    <option value={0}>No Pain</option>
+                    <option value={1}>Pain Present</option>
+                  </select>
+                  {formData.pain === 1 && (
+                    <input type="number" name="nrs_pain" title="NRS (0-10)" placeholder="0-10" value={formData.nrs_pain ?? ''} onChange={handleInputChange} min="0" max="10" />
+                  )}
+                </div>
               </div>
             </div>
 
