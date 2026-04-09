@@ -56,12 +56,14 @@ body {
 
 .brand-text h1 {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
   display: flex;
   align-items: center;
   gap: 12px;
+  text-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
 }
 
 .brand-text p {
